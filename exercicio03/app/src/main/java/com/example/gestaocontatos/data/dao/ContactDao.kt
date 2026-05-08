@@ -18,12 +18,11 @@ interface ContactDao {
     suspend fun update(contact: Contact)
 
     @Query("SELECT * FROM contacts")
-    fun getAll(): List<Contact>
+    suspend fun getAll(): List<Contact>
 
     @Query("SELECT * FROM contacts WHERE name LIKE '%' || :name || '%'")
-    fun getByName(name: String): List<Contact>
+    suspend fun getByName(name: String): List<Contact>
 
     @Delete
     suspend fun delete(contact: Contact)
-
 }
