@@ -4,34 +4,29 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.Card
-import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import com.example.gestaocontatos.data.dao.ContactDao
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import com.example.gestaocontatos.data.database.AppDatabase
 import com.example.gestaocontatos.data.entity.Contact
+import com.example.gestaocontatos.data.service.ContactService
+import com.example.gestaocontatos.ui.screens.ContactListScreen
+import com.example.gestaocontatos.ui.screens.ContactScreen
 import com.example.gestaocontatos.ui.theme.GestaoContatosTheme
 
 class MainActivity : ComponentActivity() {
@@ -40,70 +35,85 @@ class MainActivity : ComponentActivity() {
         
         val db = AppDatabase.getDatabase(this)
         val dao = db.contactDao()
+        val service = ContactService(dao)
 
         enableEdgeToEdge()
         setContent {
             GestaoContatosTheme {
-                ListarContatos(dao)
+                GerenciadorNavegacao(service)
             }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ListarContatos(dao: ContactDao) {
-
-    var contacts by remember { mutableStateOf<List<Contact>>(emptyList()) }
-
-    // Busca os dados quando o Composable entra na tela
-    LaunchedEffect(Unit) {
-        contacts = dao.getAll()
-    }
+fun GerenciadorNavegacao(service: ContactService) {
+    val navController = rememberNavController()
+    var selectedContact by remember { mutableStateOf<Contact?>(null) }
+    var isReadOnly by remember { mutableStateOf(false) }
 
     Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Text(text = "Lista de Contatos")
-                }
-            )
+        bottomBar = {
+            NavigationBar {
+                NavigationBarItem(
+                    selected = true,
+                    onClick = { navController.navigate("listarContatos") },
+                    icon = { 
+                        Icon(
+                            Icons.Default.AccountCircle, 
+                            contentDescription = "Início"
+                        )
+                    },
+                    label = { Text("Contatos") }
+                )
+
+                NavigationBarItem(
+                    selected = false,
+                    onClick = { 
+                        selectedContact = null
+                        isReadOnly = false
+                        navController.navigate("manipularContato") 
+                    },
+                    icon = { 
+                        Icon(
+                            Icons.Default.AddCircle, 
+                            contentDescription = "Cadastrar"
+                        ) 
+                    },
+                    label = { Text("Novo") }
+                )
+            }
         }
     ) { innerPadding ->
-        LazyColumn(
+        NavHost(
+            navController = navController,
+            startDestination = "listarContatos",
             modifier = Modifier.padding(innerPadding)
         ) {
-            items(contacts) { contact ->
-                ContactItem(contact)
-                HorizontalDivider()
+            composable("listarContatos") {
+                ContactListScreen(
+                    service = service,
+                    onContactClick = { contact ->
+                        selectedContact = contact
+                        isReadOnly = true
+                        navController.navigate("manipularContato")
+                    },
+                    onEdit = { contact ->
+                        selectedContact = contact
+                        isReadOnly = false
+                        navController.navigate("manipularContato")
+                    }
+                )
+            }
+
+            composable("manipularContato") {
+                ContactScreen(
+                    service = service,
+                    contact = selectedContact,
+                    isReadOnly = isReadOnly,
+                    onBack = { navController.popBackStack() }
+                )
             }
         }
-    }
-}
-
-@Composable
-fun ContactItem(contact: Contact) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(10.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(10.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column() {
-                Text(text = contact.name)
-                Text(text = contact.phone)
-            }
-
-            IconButton(onClick = {}) {
-                Icon(Icons.Default.Delete, contentDescription = "Remover")
-            }
-
-        }
-
     }
 }

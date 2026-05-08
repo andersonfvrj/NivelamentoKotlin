@@ -17,11 +17,8 @@ interface ContactDao {
     @Update
     suspend fun update(contact: Contact)
 
-    @Query("SELECT * FROM contacts")
+    @Query("SELECT * FROM contacts ORDER BY name ASC")
     suspend fun getAll(): List<Contact>
-
-    @Query("SELECT * FROM contacts WHERE name LIKE '%' || :name || '%'")
-    suspend fun getByName(name: String): List<Contact>
 
     @Delete
     suspend fun delete(contact: Contact)
